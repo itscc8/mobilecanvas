@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MObile Canvas</title>
+    <script
+      src="https://kit.fontawesome.com/f3b3bb3549.js"
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        background-color: black;
+        color: white;
+        font-family: 'Courier New', Courier, monospace;
+        overflow: hidden;
+        user-select: none;
+        touch-action: none;
+      }
+
+      #vertical {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: black;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-size: 2rem;
+        z-index: 9999;
+        cursor: pointer;
+      }
+
+      #tools {
+        padding: 1rem;
+        border-radius: 50%;
+        border: 1px solid white;
+        position: fixed;
+        top: 10px;
+        left: 700px;
+        z-index: 9999;
+        display: none;
+        cursor: move;
+        user-select: none;
+      }
+
+      i {
+        font-size: 2rem;
+      }
+
+      #toolsDiv {
+        display: none;
+        border-top: 1px solid white;
+      }
+
+      input[type='color'] {
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      #canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="vertical">
+      Vertical orientation is required. <br />
+      Click this after rotating device.
+    </div>
+    <div id="tools">
+      <i id="toolsBtn" class="fa-solid fa-pen"></i>
+      <div id="toolsDiv">
+        <i id="modeSwitch" class="fa-solid fa-eraser"></i>
+        <input
+          type="color"
+          name="colorPicker"
+          id="colorPicker"
+          value="#ffffff"
+        />
+      </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>
+      //   const isVertical = window.innerWidth < window.innerHeight
+      const isVertical = true
+      const vertical = document.getElementById('vertical')
+      const tools = document.getElementById('tools')
+      const toolsBtn = document.getElementById('toolsBtn')
+      const toolsDiv = document.getElementById('toolsDiv')
+      const colorPicker = document.getElementById('colorPicker')
+      const modeSwitch = document.getElementById('modeSwitch')
+      if (isVertical) {
+        vertical.style.display = 'none'
+        tools.style.display = 'block'
+      } else {
+        vertical.onclick = () => {
+          location.reload()
+        }
+      }
+
+      let isDragging = false
+      let offsetX, offsetY
+
+      tools.onmousedown = dragDown
+      tools.onmousemove = dragMove
+      tools.onmouseup = dragUp
+      tools.onmouseleave = dragUp
+      tools.ontouchstart = dragDown
+      tools.ontouchmove = dragMove
+      tools.ontouchend = dragUp
+      tools.ontouchcancel = dragUp
+
+      tools.onclick = toolsClick
+
+      function toolsClick(event) {
+        // If the event target is the pen icon, toggle the visibility of the toolsDiv
+        if (event.target === toolsBtn) {
+          if (toolsDiv.style.display === 'none') {
+            toolsDiv.style.display = 'block'
+          } else {
+            toolsDiv.style.display = 'none'
+          }
+          event.stopPropagation() // Prevent the drag logic from triggering
+        }
+
+        // If the event target is the color picker, stop propagation to avoid triggering drag
+        if (event.target === colorPicker || event.target === modeSwitch) {
+          event.stopPropagation() // Prevent drag behavior from firing
+        }
+      }
+
+      function dragDown(e) {
+        // Prevent the drag event if the event is triggered by the pen icon or color picker
+        if (
+          e.target === toolsBtn ||
+          e.target === colorPicker ||
+          e.target === modeSwitch
+        )
+          return // Do nothing if the pen icon or color picker was clicked
+
+        e.preventDefault()
+        isDragging = true
+
+        if (e.type === 'mousedown') {
+          offsetX = e.clientX - tools.getBoundingClientRect().left
+          offsetY = e.clientY - tools.getBoundingClientRect().top
+        } else if (e.type === 'touchstart') {
+          offsetX = e.touches[0].clientX - tools.getBoundingClientRect().left
+          offsetY = e.touches[0].clientY - tools.getBoundingClientRect().top
+        }
+      }
+
+      function dragMove(e) {
+        e.preventDefault()
+        if (isDragging) {
+          let x, y
+          if (e.type === 'mousemove') {
+            x = e.clientX
+            y = e.clientY
+          } else if (e.type === 'touchmove') {
+            x = e.touches[0].clientX
+            y = e.touches[0].clientY
+          }
+
+          tools.style.left = x - offsetX + 'px'
+          tools.style.top = y - offsetY + 'px'
+        }
+      }
+
+      function dragUp() {
+        isDragging = false
+      }
+
+      const canvas = document.getElementById('canvas')
+      const ctx = canvas.getContext('2d')
+
+      var color = colorPicker.value
+
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+
+      let mode = 'pen'
+      let lineWidth = 5
+
+      colorPicker.oninput = function () {
+        if (mode === 'pen') {
+          color = this.value
+        } else {
+          colorPicker.value = '#000000'
+        }
+      }
+
+      modeSwitch.onclick = () => {
+        if (mode === 'pen') {
+          mode = 'eraser'
+          toolsBtn.classList.remove('fa-pen')
+          toolsBtn.classList.add('fa-eraser')
+          modeSwitch.classList.remove('fa-eraser')
+          modeSwitch.classList.add('fa-pen')
+          color = '#000000'
+          colorPicker.value = color
+          lineWidth = 20
+        } else {
+          mode = 'pen'
+          toolsBtn.classList.remove('fa-eraser')
+          toolsBtn.classList.add('fa-pen')
+          modeSwitch.classList.remove('fa-pen')
+          modeSwitch.classList.add('fa-eraser')
+          color = '#ffffff'
+          colorPicker.value = color
+          lineWidth = 5
+        }
+      }
+
+      let drawing = false
+
+      canvas.onmousedown = startDrawing
+      canvas.onmousemove = moveDrawing
+      canvas.onmouseup = stopDrawing
+      canvas.onmouseleave = stopDrawing
+      canvas.ontouchstart = startDrawing
+      canvas.ontouchmove = moveDrawing
+      canvas.ontouchend = stopDrawing
+      canvas.ontouchcancel = stopDrawing
+
+      function startDrawing(e) {
+        drawing = true
+        ctx.beginPath()
+        if (e.type === 'mousedown') {
+          ctx.moveTo(e.clientX, e.clientY)
+        } else if (e.type === 'touchstart') {
+          ctx.moveTo(e.touches[0].clientX, e.touches[0].clientY)
+        }
+      }
+
+      function moveDrawing(e) {
+        if (drawing) {
+          if (e.type === 'mousemove') {
+            ctx.lineTo(e.clientX, e.clientY)
+          } else if (e.type === 'touchmove') {
+            ctx.lineTo(e.touches[0].clientX, e.touches[0].clientY)
+          }
+          ctx.strokeStyle = color
+          ctx.lineWidth = lineWidth
+          ctx.lineCap = 'round'
+          ctx.stroke()
+        }
+      }
+
+      function stopDrawing() {
+        drawing = false
+      }
+    </script>
+  </body>
+</html>
